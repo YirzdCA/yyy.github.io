@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Lab Pro - 专业取色工具箱</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: -apple-system, sans-serif; 
+            background: #ffffff; color: #333; 
+            display: flex; flex-direction: column; 
+            overflow: hidden; overscroll-behavior: none; 
+        }
+
+        /* ===== 顶部导航栏 ===== */
+        .tab-bar {
+            display: flex;
+            height: 44px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            z-index: 100;
+        }
+        
+        .tab-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.3s;
+            position: relative;
+        }
+        
+        .tab-item.active { color: #333; }
+        
+        .tab-indicator {
+            position: absolute;
+            bottom: 0;
+            height: 3px;
+            width: 33.333%;
+            background: #007AFF;
+            border-radius: 2px 2px 0 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ===== 内容容器 ===== */
+        .content-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tab-panel {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(20px);
+            transition: all 0.3s ease;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        .tab-panel.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        /* ===== 模块1: 全彩取色器 ===== */
+        #panel-picker { 
+            display: flex; flex-direction: column;
+            background: #f5f5f5;
+        }
+        
+        .picker-area { 
+            flex: 1; 
+            position: relative; 
+            background: #f0f0f0; 
+            touch-action: none; 
+            min-height: 200px;
+        }
+        #colorSurface { width: 100%; height: 100%; display: block; }
+        #cursor { 
+            position: absolute; width: 24px; height: 24px; 
+            border: 3px solid white; border-radius: 50%; 
+            box-shadow: 0 0 6px rgba(0,0,0,0.4); 
+            transform: translate(-12px, -12px); pointer-events: none; z-index: 10;
+        }
+
+        .hue-bar { 
+            height: 30px; width: 100%; position: relative; 
+            background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%); 
+            touch-action: none;
+            border-top: 1px solid #ddd;
+        }
+        #hueCursor { 
+            position: absolute; top: 0; width: 8px; height: 100%; 
+            background: #fff; border: 1px solid #000; 
+            box-shadow: 0 0 4px rgba(0,0,0,0.3); pointer-events: none; 
+        }
+
+        .picker-panel { 
+            padding: 15px 20px calc(15px + env(safe-area-inset-bottom));
+            background: #fff; 
+            border-top: 1px solid #eee;
+        }
+        
+        .picker-top-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        
+        .preview-box { 
+            width: 55px; height: 55px; border-radius: 10px; border: 1px solid #eee;
+            background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                              linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                              linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 12px 12px;
+            overflow: hidden; flex-shrink: 0;
+        }
+        #currentFill { width: 100%; height: 100%; }
+
+        .slider-wrap { flex: 1; }
+        .slider-wrap label { font-size: 11px; font-weight: bold; color: #aaa; display: block; margin-bottom: 8px; }
+        
+        input[type="range"] { 
+            width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; 
+            -webkit-appearance: none; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; width: 22px; height: 22px; 
+            background: #fff; border: 1px solid #ddd; border-radius: 50%; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 12px; }
+        .field { position: relative; }
+        .field label { position: absolute; left: 12px; top: 6px; font-size: 9px; color: #999; font-weight: bold; }
+        input[type="text"] { 
+            width: 100%; padding: 22px 12px 10px 12px; 
+            border: 1px solid #f5f5f5; background: #fafafa; 
+            border-radius: 10px; font-family: 'SF Mono', 'Monaco', monospace; 
+            font-size: 16px; color: #222; outline: none;
+        }
+        input[type="text"]:focus { border-color: #ddd; background: #fff; }
+
+        /* ===== 模块2: 灰度精调 ===== */
+        #panel-gray {
+            display: flex; flex-direction: column;
+            background: #fff;
+        }
+        
+        .gray-header-preview {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                              linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                              linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 10px 10px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        #grayMainDisplay {
+            flex: 1; height: 50px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: monospace; font-weight: bold; font-size: 16px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+        }
+
+        .step-container {
+            padding: 15px 20px;
+            display: flex; justify-content: space-between; gap: 5px;
+            flex-shrink: 0;
+        }
+        .gray-step {
+            flex: 1; height: 30px; border-radius: 4px; border: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .gray-controls {
+            flex: 1; padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+            overflow-y: auto;
+        }
+
+        .slider-group { margin-bottom: 20px; }
+        .slider-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .slider-header label { font-size: 11px; font-weight: bold; color: #999; }
+        .slider-header span { font-family: monospace; font-size: 12px; }
+
+        #grayRange { background: linear-gradient(to right, #000, #fff) !important; }
+
+        /* ===== 模块3: 透明度转换 ===== */
+        #panel-convert {
+            padding: 15px;
+            overflow-y: auto;
+            background: white;
+        }
+        
+        .convert-input-group { margin-bottom: 15px; }
+        .convert-input-group .label { font-weight: bold; font-size: 12px; margin-bottom: 6px; color: #333; }
+        #hexInput {
+            width: 100%; border: 2px solid #000; padding: 12px; 
+            font-size: 16px; box-sizing: border-box; font-weight: bold;
+            font-family: monospace; border-radius: 8px;
+        }
+
+        .convert-box { 
+            height: 75px; border: 1px solid #000; margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; overflow: hidden; 
+            transition: transform 0.1s;
+        }
+        .convert-box:active { transform: scale(0.98); }
+        .convert-box .hex-val { font-size: 18px; font-weight: 800; font-family: monospace; }
+        .convert-box .label { font-weight: bold; font-size: 11px; margin-bottom: 3px; }
+        .convert-box .tag { 
+            position: absolute; top: 4px; left: 6px; 
+            font-size: 8px; font-weight: bold; opacity: 0.5; 
+            background: rgba(255,255,255,0.3); padding: 1px 4px; border-radius: 2px; 
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #666;
+            margin: 20px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="tab-bar">
+    <div class="tab-item active" data-tab="picker">🎨 全彩取色</div>
+    <div class="tab-item" data-tab="gray">⚫ 灰度精调</div>
+    <div class="tab-item" data-tab="convert">🔧 透明转换</div>
+    <div class="tab-indicator"></div>
+</div>
+
+<!-- 内容区域 -->
+<div class="content-wrapper">
+
+    <!-- 面板1: 全彩取色器 -->
+    <div class="tab-panel active" id="panel-picker">
+        <div class="picker-area" id="box">
+            <canvas id="colorSurface"></canvas>
+            <div id="cursor"></div>
+        </div>
+        
+        <div class="hue-bar" id="hueTrack">
+            <div id="hueCursor"></div>
+        </div>
+        
+        <div class="picker-panel">
+            <div class="picker-top-row">
+                <div class="preview-box"><div id="currentFill"></div></div>
+                <div class="slider-wrap">
+                    <label>ALPHA: <span id="alphaTxt">100</span>%</label>
+                    <input type="range" id="alphaRange" min="0" max="255" value="255">
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="field">
+                    <label>RGBA (CSS)</label>
+                    <input type="text" id="rgbaIn" spellcheck="false" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label>ARGB (8-BIT HEX)</label>
+                    <input type="text" id="argbIn" spellcheck="false" autocomplete="off">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 面板2: 灰度精调 -->
+    <div class="tab-panel" id="panel-gray">
+        <div class="gray-header-preview">
+            <div id="grayMainDisplay">#FF808080</div>
+        </div>
+        
+        <div class="step-container" id="stepBar"></div>
+        
+        <div class="gray-controls">
+            <div class="slider-group">
+                <div class="slider-header">
+                    <label>灰度粗调 (Grayscale)</label>
+                    <span id="grayVal">128</span>
+                </div>
+                <input type="range" id="grayRange" min="0" max="255" value="128">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <label>微调偏移 (Bias -50 ~ +50)</label>
+                    <span id="biasVal">0</span>
+                </div>
+                <input type="range" id="biasRange" min="-50" max="50" value="0">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <label>不透明度 (Opacity)</label>
+                    <span id="grayAlphaVal">100%</span>
+                </div>
+                <input type="range" id="grayAlphaRange" min="0" max="255" value="255">
+            </div>
+
+            <div class="input-group">
+                <div class="field">
+                    <label>CSS RGBA</label>
+                    <input type="text" id="grayRgbaOut" spellcheck="false">
+                </div>
+                <div class="field">
+                    <label>ARGB HEX (8-BIT)</label>
+                    <input type="text" id="grayArgbOut" spellcheck="false">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 面板3: 透明度转换 -->
+    <div class="tab-panel" id="panel-convert">
+        <div class="convert-input-group">
+            <div class="label">Input ARGB (#AARRGGBB):</div>
+            <input type="text" id="hexInput" value="#64B1B2B5">
+        </div>
+        
+        <div class="convert-input-group">
+            <div class="label">Global Alpha: <span id="alphaShow" style="color:#ff4500">75</span>%</div>
+            <input type="range" id="alphaRangeConvert" min="1" max="100" value="75">
+        </div>
+
+        <div class="section-title">转换结果 (点击复制)</div>
+        
+        <div class="label">A: Gamma (能量守恒)</div>
+        <div id="gammaBtn" class="convert-box" onclick="copyResult('gammaHex')">
+            <span class="tag">GAMMA</span>
+            <div id="gammaHex" class="hex-val">#--</div>
+        </div>
+
+        <div class="label">B: Linear (物理标准)</div>
+        <div id="linearBtn" class="convert-box" onclick="copyResult('linearHex')">
+            <span class="tag">LINEAR</span>
+            <div id="linearHex" class="hex-val">#--</div>
+        </div>
+
+        <div class="label">C: Perceptual (感知平衡)</div>
+        <div id="weightBtn" class="convert-box" onclick="copyResult('weightHex')">
+            <span class="tag">BALANCED</span>
+            <div id="weightHex" class="hex-val">#--</div>
+        </div>
+
+        <div class="label">D: Env-Adaptive (环境增强)</div>
+        <div id="envBtn" class="convert-box" onclick="copyResult('envHex')">
+            <span class="tag">ENHANCED</span>
+            <div id="envHex" class="hex-val">#--</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ==================== Tab 切换系统 ==================== */
+const tabItems = document.querySelectorAll('.tab-item');
+const tabPanels = document.querySelectorAll('.tab-panel');
+const indicator = document.querySelector('.tab-indicator');
+
+function switchTab(tabName) {
+    // 更新导航
+    tabItems.forEach((item, index) => {
+        if (item.dataset.tab === tabName) {
+            item.classList.add('active');
+            indicator.style.transform = `translateX(${index * 100}%)`;
+        } else {
+            item.classList.remove('active');
+        }
+    });
+    
+    // 更新面板
+    tabPanels.forEach(panel => {
+        if (panel.id === `panel-${tabName}`) {
+            panel.classList.add('active');
+        } else {
+            panel.classList.remove('active');
+        }
+    });
+    
+    // 初始化对应模块
+    if (tabName === 'picker' && !pickerInited) initPicker();
+    if (tabName === 'gray' && !grayInited) initGray();
+    if (tabName === 'convert') updateConvert();
+}
+
+tabItems.forEach(item => {
+    item.addEventListener('click', () => switchTab(item.dataset.tab));
+});
+
+/* ==================== 模块1: 全彩取色器 ==================== */
+let pickerInited = false;
+let h = 210, s = 60, v = 90, a = 255;
+
+function initPicker() {
+    if (pickerInited) return;
+    pickerInited = true;
+    
+    const box = document.getElementById('box');
+    const canvas = document.getElementById('colorSurface');
+    const ctx = canvas.getContext('2d');
+    const cursor = document.getElementById('cursor');
+    const hueTrack = document.getElementById('hueTrack');
+    const hueCursor = document.getElementById('hueCursor');
+    const alphaRange = document.getElementById('alphaRange');
+    const currentFill = document.getElementById('currentFill');
+    const rgbaIn = document.getElementById('rgbaIn');
+    const argbIn = document.getElementById('argbIn');
+
+    function initCanvas() {
+        canvas.width = box.clientWidth;
+        canvas.height = box.clientHeight;
+        drawSurface();
+    }
+
+    function drawSurface() {
+        ctx.fillStyle = `hsl(${h}, 100%, 50%)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let gradW = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        gradW.addColorStop(0, '#fff'); gradW.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradW; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let gradB = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradB.addColorStop(0, 'transparent'); gradB.addColorStop(1, '#000');
+        ctx.fillStyle = gradB; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function hsvToRgb(h, s, v) {
+        s /= 100; v /= 100;
+        let f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+        return [Math.round(f(5) * 255), Math.round(f(3) * 255), Math.round(f(1) * 255)];
+    }
+
+    function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        let max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        let h, s = (max === 0 ? 0 : d / max), v = max;
+        if (max == min) h = 0;
+        else {
+            if (max == r) h = (g - b) / d + (g < b ? 6 : 0);
+            else if (max == g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h /= 6;
+        }
+        return [h * 360, s * 100, v * 100];
+    }
+
+    function update(skipInputs = false) {
+        const [r, g, b] = hsvToRgb(h, s, v);
+        const aVal = (a / 255).toFixed(2);
+        const aHex = parseInt(a).toString(16).padStart(2, '0').toUpperCase();
+        const hex = r.toString(16).padStart(2,'0').toUpperCase() + 
+                    g.toString(16).padStart(2,'0').toUpperCase() + 
+                    b.toString(16).padStart(2,'0').toUpperCase();
+
+        currentFill.style.backgroundColor = `rgba(${r},${g},${b},${aVal})`;
+        document.getElementById('alphaTxt').innerText = Math.round((a/255)*100);
+        
+        if(!skipInputs) {
+            rgbaIn.value = `rgba(${r}, ${g}, ${b}, ${aVal})`;
+            argbIn.value = `#${aHex}${hex}`;
+        }
+
+        cursor.style.left = s + '%';
+        cursor.style.top = (100 - v) + '%';
+        hueCursor.style.left = (h / 360 * 100) + '%';
+        drawSurface();
+    }
+
+    function handleBox(e) {
+        e.preventDefault();
+        const rect = box.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        s = Math.min(Math.max(0, (t.clientX - rect.left) / rect.width * 100), 100);
+        v = Math.min(Math.max(0, 100 - ((t.clientY - rect.top) / rect.height * 100)), 100);
+        update();
+    }
+
+    function handleHue(e) {
+        e.preventDefault();
+        const rect = hueTrack.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        h = Math.min(Math.max(0, (t.clientX - rect.left) / rect.width * 360), 360);
+        update();
+    }
+
+    box.addEventListener('touchstart', handleBox, {passive: false});
+    box.addEventListener('touchmove', handleBox, {passive: false});
+    box.addEventListener('mousedown', (e) => {
+        handleBox(e);
+        const move = (ev) => handleBox(ev);
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    });
+
+    hueTrack.addEventListener('touchstart', handleHue, {passive: false});
+    hueTrack.addEventListener('touchmove', handleHue, {passive: false});
+    hueTrack.addEventListener('mousedown', (e) => {
+        handleHue(e);
+        const move = (ev) => handleHue(ev);
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    });
+
+    alphaRange.oninput = (e) => { a = e.target.value; update(); };
+
+    argbIn.oninput = (e) => {
+        let val = e.target.value.replace('#', '');
+        if (val.length === 8) {
+            a = parseInt(val.slice(0, 2), 16);
+            let r = parseInt(val.slice(2, 4), 16), g = parseInt(val.slice(4, 6), 16), b = parseInt(val.slice(6, 8), 16);
+           
